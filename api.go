@@ -105,23 +105,27 @@ func (cfg *apiConfig) chirpsHandler(writter http.ResponseWriter, request *http.R
 		return
 	}
 
-	res.Valid = true
-	res.BodyClean = profane(req.Body)
-
-	createdChirp, err := cfg.db.CreateChirp(context.Background(), database.CreateChirpParams{UserID: req.UserId, Body: res.BodyClean})
+	createdChirp, err := cfg.db.CreateChirp(context.Background(), database.CreateChirpParams{UserID: req.UserId, Body: profane(req.Body)})
 	if err != nil {
 		log.Printf("Error creating chirp: %s", err)
 		writter.WriteHeader(500)
 		return
 	}
 
-	dat, err := json.Marshal(createdChirp)
+	res.ID = createdChirp.ID
+	res.CreatedAt = createdChirp.CreatedAt
+	res.UpdatedAt = createdChirp.UpdatedAt
+	res.Body = profane(req.Body)
+	res.UserId = req.UserId
+	res.Valid = true
+
+	dat, err := json.Marshal(res)
 	if err != nil {
 		log.Printf("Error marshalling JSON: %s", err)
 		writter.WriteHeader(500)
 		return
 	}
 
-	writter.WriteHeader(200)
+	writter.WriteHeader(201)
 	writter.Write([]byte(dat))
 }
