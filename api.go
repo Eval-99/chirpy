@@ -8,6 +8,7 @@ import (
 	"sync/atomic"
 
 	"github.com/Eval-99/chirpy/internal/database"
+	"github.com/google/uuid"
 )
 
 type apiConfig struct {
@@ -150,6 +151,41 @@ func (cfg *apiConfig) allChirpsHandler(writter http.ResponseWriter, request *htt
 	}
 
 	dat, err := json.Marshal(chirpSlice)
+	if err != nil {
+		log.Printf("Error marshalling JSON: %s", err)
+		writter.WriteHeader(500)
+		return
+	}
+
+	writter.Header().Set("Content-Type", "application/json; charset=utf-8")
+	writter.WriteHeader(200)
+	writter.Write([]byte(dat))
+}
+
+func (cfg *apiConfig) chirpsIDHandler(writter http.ResponseWriter, request *http.Request) {
+	chirpID, err := uuid.Parse(request.PathValue("chirpID"))
+	if err != nil {
+		log.Printf("Error parsing chirp ID, not a valid uuid: %s", err)
+		writter.WriteHeader(404)
+		return
+	}
+
+	chirp, err := cfg.db.ChirpsID(request.Context(), chirpID)
+	if err != nil {
+		log.Printf("Error fetching chirp ID, not in database: %s", err)
+		writter.WriteHeader(404)
+		return
+	}
+
+	res := responseFields{}
+	res.ID = chirp.ID
+	res.CreatedAt = chirp.CreatedAt
+	res.UpdatedAt = chirp.UpdatedAt
+	res.Body = chirp.Body
+	res.UserID = chirp.UserID
+	res.Valid = true
+
+	dat, err := json.Marshal(res)
 	if err != nil {
 		log.Printf("Error marshalling JSON: %s", err)
 		writter.WriteHeader(500)
