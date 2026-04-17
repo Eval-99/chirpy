@@ -78,3 +78,50 @@ func (cfg *apiConfig) usersHandler(writter http.ResponseWriter, request *http.Re
 	writter.WriteHeader(201)
 	writter.Write([]byte(dat))
 }
+
+func (cfg *apiConfig) chirpsHandler(writter http.ResponseWriter, request *http.Request) {
+	req, err := decode(request)
+	if err != nil {
+		log.Printf("Error decoding request fields: %s", err)
+		writter.WriteHeader(500)
+		return
+	}
+
+	res := responseFields{}
+	writter.Header().Set("Content-Type", "application/json; charset=utf-8")
+
+	if len(req.Body) > 140 {
+		res.Error = "Chirp is too long"
+
+		dat, err := json.Marshal(res)
+		if err != nil {
+			log.Printf("Error marshalling JSON: %s", err)
+			writter.WriteHeader(500)
+			return
+		}
+
+		writter.WriteHeader(400)
+		writter.Write([]byte(dat))
+		return
+	}
+
+	res.Valid = true
+	res.BodyClean = profane(req.Body)
+
+	createdChirp, err := cfg.db.CreateChirp(context.Background(), database.CreateChirpParams{UserID: req.UserId, Body: res.BodyClean})
+	if err != nil {
+		log.Printf("Error creating chirp: %s", err)
+		writter.WriteHeader(500)
+		return
+	}
+
+	dat, err := json.Marshal(createdChirp)
+	if err != nil {
+		log.Printf("Error marshalling JSON: %s", err)
+		writter.WriteHeader(500)
+		return
+	}
+
+	writter.WriteHeader(200)
+	writter.Write([]byte(dat))
+}
