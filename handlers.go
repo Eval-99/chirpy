@@ -12,9 +12,10 @@ import (
 )
 
 type requestFields struct {
-	Body   string    `json:"body"`
-	Email  string    `json:"email"`
-	UserID uuid.UUID `json:"user_id"`
+	Body     string    `json:"body"`
+	Email    string    `json:"email"`
+	UserID   uuid.UUID `json:"user_id"`
+	Password string    `json:"password"`
 }
 
 type responseFields struct {

@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"sync/atomic"
 
+	"github.com/Eval-99/chirpy/internal/auth"
 	"github.com/Eval-99/chirpy/internal/database"
 	"github.com/google/uuid"
 )
@@ -53,7 +54,21 @@ func (cfg *apiConfig) usersHandler(writter http.ResponseWriter, request *http.Re
 		return
 	}
 
-	createdUser, err := cfg.db.CreateUser(request.Context(), req.Email)
+	if req.Email == "" || req.Password == "" {
+		log.Printf("Error creating user, Email or Password missing: %s", err)
+		writter.WriteHeader(500)
+		return
+	}
+
+	pass, err := auth.HashPassword(req.Password)
+	if err != nil {
+		log.Printf("Error hashing password: %s", err)
+		writter.WriteHeader(500)
+		return
+	}
+
+	params := database.CreateUserParams{Email: req.Email, HashedPassword: pass}
+	createdUser, err := cfg.db.CreateUser(request.Context(), params)
 	if err != nil {
 		log.Printf("Error creating createdUser: %s", err)
 		writter.WriteHeader(500)
@@ -76,6 +91,47 @@ func (cfg *apiConfig) usersHandler(writter http.ResponseWriter, request *http.Re
 
 	writter.Header().Set("Content-Type", "application/json; charset=utf-8")
 	writter.WriteHeader(201)
+	writter.Write([]byte(dat))
+}
+
+func (cfg *apiConfig) loginHandler(writter http.ResponseWriter, request *http.Request) {
+	req, err := decode(request)
+	if req.Email == "" || req.Password == "" {
+		log.Printf("Error looking up user, Email or Password missing: %s", err)
+		writter.WriteHeader(500)
+		return
+	}
+
+	dbUser, err := cfg.db.UsersByEmail(request.Context(), req.Email)
+	if err != nil {
+		log.Printf("Incorrect email or password")
+		writter.WriteHeader(401)
+		return
+	}
+
+	isValid, err := auth.CheckPasswordHash(req.Password, dbUser.HashedPassword)
+	if err != nil || !isValid {
+		log.Printf("Incorrect email or password")
+		writter.WriteHeader(401)
+		return
+	}
+
+	user := User{
+		ID:        dbUser.ID,
+		CreatedAt: dbUser.CreatedAt,
+		UpdatedAt: dbUser.UpdatedAt,
+		Email:     dbUser.Email,
+	}
+
+	dat, err := json.Marshal(user)
+	if err != nil {
+		log.Printf("Error marshalling JSON: %s", err)
+		writter.WriteHeader(500)
+		return
+	}
+
+	writter.Header().Set("Content-Type", "application/json; charset=utf-8")
+	writter.WriteHeader(200)
 	writter.Write([]byte(dat))
 }
 
