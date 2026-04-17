@@ -1,1 +1,5 @@
 out
+chirpy
+.sqruff
+postgres-language-server.jsonc
+.env
