@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -37,7 +36,7 @@ func (cfg *apiConfig) resetHandler(writter http.ResponseWriter, request *http.Re
 		return
 	}
 
-	cfg.db.DeleteAllUsers(context.Background())
+	cfg.db.DeleteAllUsers(request.Context())
 
 	cfg.fileserverHits.Store(0)
 	writter.Header().Set("Content-Type", "text/plain; charset=utf-8")
@@ -53,7 +52,7 @@ func (cfg *apiConfig) usersHandler(writter http.ResponseWriter, request *http.Re
 		return
 	}
 
-	createdUser, err := cfg.db.CreateUser(context.Background(), req.Email)
+	createdUser, err := cfg.db.CreateUser(request.Context(), req.Email)
 	if err != nil {
 		log.Printf("Error creating createdUser: %s", err)
 		writter.WriteHeader(500)
@@ -105,7 +104,7 @@ func (cfg *apiConfig) chirpsHandler(writter http.ResponseWriter, request *http.R
 		return
 	}
 
-	createdChirp, err := cfg.db.CreateChirp(context.Background(), database.CreateChirpParams{UserID: req.UserID, Body: profane(req.Body)})
+	createdChirp, err := cfg.db.CreateChirp(request.Context(), database.CreateChirpParams{UserID: req.UserID, Body: profane(req.Body)})
 	if err != nil {
 		log.Printf("Error creating chirp: %s", err)
 		writter.WriteHeader(500)
@@ -131,7 +130,7 @@ func (cfg *apiConfig) chirpsHandler(writter http.ResponseWriter, request *http.R
 }
 
 func (cfg *apiConfig) allChirpsHandler(writter http.ResponseWriter, request *http.Request) {
-	dbChirps, err := cfg.db.AllChirps(context.Background())
+	dbChirps, err := cfg.db.AllChirps(request.Context())
 	if err != nil {
 		log.Printf("Error fetching all chirps: %s", err)
 		writter.WriteHeader(500)
