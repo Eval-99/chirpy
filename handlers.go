@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"slices"
+	"strings"
 )
 
 func healthHandler(writter http.ResponseWriter, request *http.Request) {
@@ -18,8 +20,9 @@ func ValidateChirpHandler(writter http.ResponseWriter, request *http.Request) {
 	}
 
 	type responseFields struct {
-		Valid bool   `json:"valid"`
-		Error string `json:"error"`
+		Valid     bool   `json:"valid"`
+		Error     string `json:"error"`
+		BodyClean string `json:"cleaned_body"`
 	}
 
 	decoder := json.NewDecoder(request.Body)
@@ -50,6 +53,7 @@ func ValidateChirpHandler(writter http.ResponseWriter, request *http.Request) {
 	}
 
 	res.Valid = true
+	res.BodyClean = profane(req.Body)
 
 	dat, err := json.Marshal(res)
 	if err != nil {
@@ -60,4 +64,23 @@ func ValidateChirpHandler(writter http.ResponseWriter, request *http.Request) {
 
 	writter.WriteHeader(200)
 	writter.Write([]byte(dat))
+}
+
+func profane(s string) string {
+	var cleaned_words []string
+	filter := []string{
+		"kerfuffle",
+		"sharbert",
+		"fornax",
+	}
+
+	words := strings.SplitSeq(s, " ")
+	for word := range words {
+		if slices.Contains(filter, strings.ToLower(word)) {
+			word = "****"
+		}
+		cleaned_words = append(cleaned_words, word)
+	}
+
+	return strings.Join(cleaned_words, " ")
 }
