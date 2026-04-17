@@ -105,7 +105,7 @@ func (cfg *apiConfig) chirpsHandler(writter http.ResponseWriter, request *http.R
 		return
 	}
 
-	createdChirp, err := cfg.db.CreateChirp(context.Background(), database.CreateChirpParams{UserID: req.UserId, Body: profane(req.Body)})
+	createdChirp, err := cfg.db.CreateChirp(context.Background(), database.CreateChirpParams{UserID: req.UserID, Body: profane(req.Body)})
 	if err != nil {
 		log.Printf("Error creating chirp: %s", err)
 		writter.WriteHeader(500)
@@ -116,7 +116,7 @@ func (cfg *apiConfig) chirpsHandler(writter http.ResponseWriter, request *http.R
 	res.CreatedAt = createdChirp.CreatedAt
 	res.UpdatedAt = createdChirp.UpdatedAt
 	res.Body = profane(req.Body)
-	res.UserId = req.UserId
+	res.UserID = req.UserID
 	res.Valid = true
 
 	dat, err := json.Marshal(res)
@@ -127,5 +127,37 @@ func (cfg *apiConfig) chirpsHandler(writter http.ResponseWriter, request *http.R
 	}
 
 	writter.WriteHeader(201)
+	writter.Write([]byte(dat))
+}
+
+func (cfg *apiConfig) allChirpsHandler(writter http.ResponseWriter, request *http.Request) {
+	dbChirps, err := cfg.db.AllChirps(context.Background())
+	if err != nil {
+		log.Printf("Error fetching all chirps: %s", err)
+		writter.WriteHeader(500)
+		return
+	}
+
+	chirpSlice := []responseFields{}
+	for _, chirp := range dbChirps {
+		res := responseFields{}
+		res.ID = chirp.ID
+		res.CreatedAt = chirp.CreatedAt
+		res.UpdatedAt = chirp.UpdatedAt
+		res.Body = chirp.Body
+		res.UserID = chirp.UserID
+		res.Valid = true
+		chirpSlice = append(chirpSlice, res)
+	}
+
+	dat, err := json.Marshal(chirpSlice)
+	if err != nil {
+		log.Printf("Error marshalling JSON: %s", err)
+		writter.WriteHeader(500)
+		return
+	}
+
+	writter.Header().Set("Content-Type", "application/json; charset=utf-8")
+	writter.WriteHeader(200)
 	writter.Write([]byte(dat))
 }

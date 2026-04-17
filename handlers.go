@@ -13,7 +13,7 @@ import (
 type requestFields struct {
 	Body   string    `json:"body"`
 	Email  string    `json:"email"`
-	UserId uuid.UUID `json:"user_id"`
+	UserID uuid.UUID `json:"user_id"`
 }
 
 type responseFields struct {
@@ -21,7 +21,7 @@ type responseFields struct {
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 	Body      string    `json:"body"`
-	UserId    uuid.UUID `json:"user_id"`
+	UserID    uuid.UUID `json:"user_id"`
 	Valid     bool      `json:"valid"`
 	Error     string    `json:"error"`
 }
