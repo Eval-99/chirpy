@@ -87,10 +87,10 @@ func (cfg *apiConfig) chirpsHandler(writter http.ResponseWriter, request *http.R
 		return
 	}
 
-	res := responseFields{}
 	writter.Header().Set("Content-Type", "application/json; charset=utf-8")
 
 	if len(req.Body) > 140 {
+		res := responseFields{}
 		res.Error = "Chirp is too long"
 
 		dat, err := json.Marshal(res)
@@ -105,19 +105,14 @@ func (cfg *apiConfig) chirpsHandler(writter http.ResponseWriter, request *http.R
 		return
 	}
 
-	createdChirp, err := cfg.db.CreateChirp(request.Context(), database.CreateChirpParams{UserID: req.UserID, Body: profane(req.Body)})
+	chirp, err := cfg.db.CreateChirp(request.Context(), database.CreateChirpParams{UserID: req.UserID, Body: profane(req.Body)})
 	if err != nil {
 		log.Printf("Error creating chirp: %s", err)
 		writter.WriteHeader(500)
 		return
 	}
 
-	res.ID = createdChirp.ID
-	res.CreatedAt = createdChirp.CreatedAt
-	res.UpdatedAt = createdChirp.UpdatedAt
-	res.Body = profane(req.Body)
-	res.UserID = req.UserID
-	res.Valid = true
+	res := chirpConvert(chirp)
 
 	dat, err := json.Marshal(res)
 	if err != nil {
@@ -140,13 +135,7 @@ func (cfg *apiConfig) allChirpsHandler(writter http.ResponseWriter, request *htt
 
 	chirpSlice := []responseFields{}
 	for _, chirp := range dbChirps {
-		res := responseFields{}
-		res.ID = chirp.ID
-		res.CreatedAt = chirp.CreatedAt
-		res.UpdatedAt = chirp.UpdatedAt
-		res.Body = chirp.Body
-		res.UserID = chirp.UserID
-		res.Valid = true
+		res := chirpConvert(chirp)
 		chirpSlice = append(chirpSlice, res)
 	}
 
@@ -177,13 +166,7 @@ func (cfg *apiConfig) chirpsIDHandler(writter http.ResponseWriter, request *http
 		return
 	}
 
-	res := responseFields{}
-	res.ID = chirp.ID
-	res.CreatedAt = chirp.CreatedAt
-	res.UpdatedAt = chirp.UpdatedAt
-	res.Body = chirp.Body
-	res.UserID = chirp.UserID
-	res.Valid = true
+	res := chirpConvert(chirp)
 
 	dat, err := json.Marshal(res)
 	if err != nil {

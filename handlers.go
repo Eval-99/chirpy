@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Eval-99/chirpy/internal/database"
 	"github.com/google/uuid"
 )
 
@@ -66,4 +67,16 @@ func decode(r *http.Request) (requestFields, error) {
 		return requestFields{}, err
 	}
 	return req, nil
+}
+
+func chirpConvert(chirp database.Chirp) responseFields {
+	res := responseFields{}
+	res.ID = chirp.ID
+	res.CreatedAt = chirp.CreatedAt
+	res.UpdatedAt = chirp.UpdatedAt
+	res.Body = chirp.Body
+	res.UserID = chirp.UserID
+	res.Valid = true
+
+	return res
 }
