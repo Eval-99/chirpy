@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"sync/atomic"
+	"time"
 
 	"github.com/Eval-99/chirpy/internal/auth"
 	"github.com/Eval-99/chirpy/internal/database"
@@ -16,6 +17,7 @@ type apiConfig struct {
 	fileserverHits atomic.Int32
 	db             *database.Queries
 	platform       string
+	secret         string
 }
 
 func (cfg *apiConfig) middlewareMetricsInc(next http.Handler) http.Handler {
@@ -116,11 +118,23 @@ func (cfg *apiConfig) loginHandler(writter http.ResponseWriter, request *http.Re
 		return
 	}
 
+	if req.ExpiresInSeconds == 0 || req.ExpiresInSeconds > 3600 {
+		req.ExpiresInSeconds = 3600
+	}
+
+	token, err := auth.MakeJWT(dbUser.ID, cfg.secret, time.Second*time.Duration(req.ExpiresInSeconds))
+	if err != nil {
+		log.Printf("Error creating JWT: %s", err)
+		writter.WriteHeader(500)
+		return
+	}
+
 	user := User{
 		ID:        dbUser.ID,
 		CreatedAt: dbUser.CreatedAt,
 		UpdatedAt: dbUser.UpdatedAt,
 		Email:     dbUser.Email,
+		Token:     token,
 	}
 
 	dat, err := json.Marshal(user)
@@ -136,6 +150,20 @@ func (cfg *apiConfig) loginHandler(writter http.ResponseWriter, request *http.Re
 }
 
 func (cfg *apiConfig) chirpsHandler(writter http.ResponseWriter, request *http.Request) {
+	token, err := auth.GetBearerToken(request.Header)
+	if err != nil {
+		log.Printf("Error token is missing or malformed: %s", err)
+		writter.WriteHeader(401)
+		return
+	}
+
+	validatedUserID, err := auth.ValidateJWT(token, cfg.secret)
+	if err != nil {
+		log.Printf("Error token is invalid: %s", err)
+		writter.WriteHeader(401)
+		return
+	}
+
 	req, err := decode(request)
 	if err != nil {
 		log.Printf("Error decoding request fields: %s", err)
@@ -161,7 +189,7 @@ func (cfg *apiConfig) chirpsHandler(writter http.ResponseWriter, request *http.R
 		return
 	}
 
-	chirp, err := cfg.db.CreateChirp(request.Context(), database.CreateChirpParams{UserID: req.UserID, Body: profane(req.Body)})
+	chirp, err := cfg.db.CreateChirp(request.Context(), database.CreateChirpParams{UserID: validatedUserID, Body: profane(req.Body)})
 	if err != nil {
 		log.Printf("Error creating chirp: %s", err)
 		writter.WriteHeader(500)

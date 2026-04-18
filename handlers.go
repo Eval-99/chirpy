@@ -12,10 +12,11 @@ import (
 )
 
 type requestFields struct {
-	Body     string    `json:"body"`
-	Email    string    `json:"email"`
-	UserID   uuid.UUID `json:"user_id"`
-	Password string    `json:"password"`
+	Body             string    `json:"body"`
+	Email            string    `json:"email"`
+	UserID           uuid.UUID `json:"user_id"`
+	Password         string    `json:"password"`
+	ExpiresInSeconds int       `json:"expires_in_seconds"`
 }
 
 type responseFields struct {
@@ -33,6 +34,7 @@ type User struct {
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 	Email     string    `json:"email"`
+	Token     string    `json:"token"`
 }
 
 func healthHandler(writter http.ResponseWriter, request *http.Request) {

@@ -16,13 +16,14 @@ func main() {
 	godotenv.Load()
 	dbURL := os.Getenv("DB_URL")
 	platform := os.Getenv("PLATFORM")
+	secret := os.Getenv("SECRET")
 
 	db, err := sql.Open("postgres", dbURL)
 	if err != nil {
 		fmt.Println(err)
 	}
 
-	apiCfg := apiConfig{fileserverHits: atomic.Int32{}, db: database.New(db), platform: platform}
+	apiCfg := apiConfig{fileserverHits: atomic.Int32{}, db: database.New(db), platform: platform, secret: secret}
 	mux := http.NewServeMux()
 
 	mux.Handle("/app/", apiCfg.middlewareMetricsInc(http.StripPrefix("/app", http.FileServer(http.Dir(".")))))
