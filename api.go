@@ -400,3 +400,44 @@ func (cfg *apiConfig) chirpsIDHandler(writter http.ResponseWriter, request *http
 	writter.WriteHeader(200)
 	writter.Write([]byte(dat))
 }
+
+func (cfg *apiConfig) chirpDeleteHandler(writter http.ResponseWriter, request *http.Request) {
+	token, err := auth.GetBearerToken(request.Header)
+	if err != nil {
+		log.Printf("Error token is missing or malformed: %s", err)
+		writter.WriteHeader(401)
+		return
+	}
+
+	validatedUserID, err := auth.ValidateJWT(token, cfg.secret)
+	if err != nil {
+		log.Printf("Error token is invalid: %s", err)
+		writter.WriteHeader(401)
+		return
+	}
+
+	chirpID, err := uuid.Parse(request.PathValue("chirpID"))
+	if err != nil {
+		log.Printf("Error parsing chirp ID, not a valid uuid: %s", err)
+		writter.WriteHeader(404)
+		return
+	}
+
+	chirp, err := cfg.db.ChirpsID(request.Context(), chirpID)
+	if err != nil {
+		log.Printf("Error fetching chirp ID, not in database: %s", err)
+		writter.WriteHeader(404)
+		return
+	}
+
+	if chirp.UserID != validatedUserID {
+		log.Printf("Error token user id does not match chirp user id: %s", err)
+		writter.WriteHeader(403)
+		return
+	}
+
+	cfg.db.DeleteChirp(request.Context(), chirp.ID)
+
+	writter.Header().Set("Content-Type", "application/json; charset=utf-8")
+	writter.WriteHeader(204)
+}

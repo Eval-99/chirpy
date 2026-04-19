@@ -39,6 +39,7 @@ func main() {
 	mux.HandleFunc("POST /api/chirps", apiCfg.chirpsHandler)
 	mux.HandleFunc("GET /api/chirps", apiCfg.allChirpsHandler)
 	mux.HandleFunc("GET /api/chirps/{chirpID}", apiCfg.chirpsIDHandler)
+	mux.HandleFunc("DELETE /api/chirps/{chirpID}", apiCfg.chirpDeleteHandler)
 
 	serverStruct := http.Server{Handler: mux, Addr: ":8080"}
 	serverStruct.ListenAndServe()
