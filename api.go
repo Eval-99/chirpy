@@ -97,6 +97,8 @@ func (cfg *apiConfig) usersHandler(writter http.ResponseWriter, request *http.Re
 }
 
 func (cfg *apiConfig) loginHandler(writter http.ResponseWriter, request *http.Request) {
+	tokenTime := 3600
+
 	req, err := decode(request)
 	if req.Email == "" || req.Password == "" {
 		log.Printf("Error looking up user, Email or Password missing: %s", err)
@@ -118,23 +120,32 @@ func (cfg *apiConfig) loginHandler(writter http.ResponseWriter, request *http.Re
 		return
 	}
 
-	if req.ExpiresInSeconds == 0 || req.ExpiresInSeconds > 3600 {
-		req.ExpiresInSeconds = 3600
-	}
-
-	token, err := auth.MakeJWT(dbUser.ID, cfg.secret, time.Second*time.Duration(req.ExpiresInSeconds))
+	token, err := auth.MakeJWT(dbUser.ID, cfg.secret, time.Second*time.Duration(tokenTime))
 	if err != nil {
 		log.Printf("Error creating JWT: %s", err)
 		writter.WriteHeader(500)
 		return
 	}
 
+	refreshTokenParams := database.CreateRefreshTokenDBEntryParams{
+		Token:     auth.MakeRefreshToken(),
+		UserID:    dbUser.ID,
+		ExpiresAt: time.Now().UTC().Add(time.Hour * 24 * 60),
+	}
+	refresh_token, err := cfg.db.CreateRefreshTokenDBEntry(request.Context(), refreshTokenParams)
+	if err != nil {
+		log.Printf("Error creating refresh token: %s", err)
+		writter.WriteHeader(500)
+		return
+	}
+
 	user := User{
-		ID:        dbUser.ID,
-		CreatedAt: dbUser.CreatedAt,
-		UpdatedAt: dbUser.UpdatedAt,
-		Email:     dbUser.Email,
-		Token:     token,
+		ID:           dbUser.ID,
+		CreatedAt:    dbUser.CreatedAt,
+		UpdatedAt:    dbUser.UpdatedAt,
+		Email:        dbUser.Email,
+		Token:        token,
+		RefreshToken: refresh_token.Token,
 	}
 
 	dat, err := json.Marshal(user)
@@ -147,6 +158,64 @@ func (cfg *apiConfig) loginHandler(writter http.ResponseWriter, request *http.Re
 	writter.Header().Set("Content-Type", "application/json; charset=utf-8")
 	writter.WriteHeader(200)
 	writter.Write([]byte(dat))
+}
+
+func (cfg *apiConfig) refreshHandler(writter http.ResponseWriter, request *http.Request) {
+	tokenTime := 3600
+	token, err := auth.GetBearerToken(request.Header)
+	if err != nil {
+		log.Printf("Error token is missing or malformed: %s", err)
+		writter.WriteHeader(401)
+		return
+	}
+
+	user, err := cfg.db.GetUserFromRefreshToken(request.Context(), token)
+	if err != nil {
+		log.Printf("Error token doesn't exist or is expired or revoked: %s", err)
+		writter.WriteHeader(401)
+		return
+	}
+
+	accessToken, err := auth.MakeJWT(user.UserID, cfg.secret, time.Second*time.Duration(tokenTime))
+	if err != nil {
+		log.Printf("Error creating JWT: %s", err)
+		writter.WriteHeader(500)
+		return
+	}
+
+	responseUser := User{
+		Token: accessToken,
+	}
+
+	dat, err := json.Marshal(responseUser)
+	if err != nil {
+		log.Printf("Error marshalling JSON: %s", err)
+		writter.WriteHeader(500)
+		return
+	}
+
+	writter.Header().Set("Content-Type", "application/json; charset=utf-8")
+	writter.WriteHeader(200)
+	writter.Write([]byte(dat))
+}
+
+func (cfg *apiConfig) revokeHandler(writter http.ResponseWriter, request *http.Request) {
+	token, err := auth.GetBearerToken(request.Header)
+	if err != nil {
+		log.Printf("Error token is missing or malformed: %s", err)
+		writter.WriteHeader(401)
+		return
+	}
+
+	err = cfg.db.RevokeRefreshToken(request.Context(), token)
+	if err != nil {
+		log.Printf("Error revoking token, malformed or doen not exist: %s", err)
+		writter.WriteHeader(500)
+		return
+	}
+
+	writter.Header().Set("Content-Type", "application/json; charset=utf-8")
+	writter.WriteHeader(204)
 }
 
 func (cfg *apiConfig) chirpsHandler(writter http.ResponseWriter, request *http.Request) {
