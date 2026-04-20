@@ -350,12 +350,31 @@ func (cfg *apiConfig) chirpsHandler(writter http.ResponseWriter, request *http.R
 	writter.Write([]byte(dat))
 }
 
-func (cfg *apiConfig) allChirpsHandler(writter http.ResponseWriter, request *http.Request) {
-	dbChirps, err := cfg.db.AllChirps(request.Context())
-	if err != nil {
-		log.Printf("Error fetching all chirps: %s", err)
-		writter.WriteHeader(500)
-		return
+func (cfg *apiConfig) getChirpsHandler(writter http.ResponseWriter, request *http.Request) {
+	author := request.URL.Query().Get("author_id")
+	var dbChirps []database.Chirp
+	if author != "" {
+		userID, err := uuid.Parse(author)
+		if err != nil {
+			log.Printf("Error parsing User ID, not a valid uuid: %s", err)
+			writter.WriteHeader(404)
+			return
+		}
+		chirps, err := cfg.db.GetUserIDChirps(request.Context(), userID)
+		if err != nil {
+			log.Printf("Error fetching all chirps: %s", err)
+			writter.WriteHeader(500)
+			return
+		}
+		dbChirps = chirps
+	} else {
+		chirps, err := cfg.db.AllChirps(request.Context())
+		if err != nil {
+			log.Printf("Error fetching all chirps: %s", err)
+			writter.WriteHeader(500)
+			return
+		}
+		dbChirps = chirps
 	}
 
 	chirpSlice := []responseFields{}
