@@ -16,6 +16,10 @@ type requestFields struct {
 	Email    string    `json:"email"`
 	UserID   uuid.UUID `json:"user_id"`
 	Password string    `json:"password"`
+	Event    string    `json:"event"`
+	Data     struct {
+		UserID string `json:"user_id"`
+	} `json:"data"`
 }
 
 type responseFields struct {
@@ -35,6 +39,7 @@ type User struct {
 	Email        string    `json:"email"`
 	Token        string    `json:"token"`
 	RefreshToken string    `json:"refresh_token"`
+	IsChirpyRed  bool      `json:"is_chirpy_red"`
 }
 
 func healthHandler(writter http.ResponseWriter, request *http.Request) {

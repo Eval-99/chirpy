@@ -78,10 +78,11 @@ func (cfg *apiConfig) usersHandler(writter http.ResponseWriter, request *http.Re
 	}
 
 	user := User{
-		ID:        createdUser.ID,
-		CreatedAt: createdUser.CreatedAt,
-		UpdatedAt: createdUser.UpdatedAt,
-		Email:     createdUser.Email,
+		ID:          createdUser.ID,
+		CreatedAt:   createdUser.CreatedAt,
+		UpdatedAt:   createdUser.UpdatedAt,
+		Email:       createdUser.Email,
+		IsChirpyRed: createdUser.IsChirpyRed,
 	}
 
 	dat, err := json.Marshal(user)
@@ -152,6 +153,7 @@ func (cfg *apiConfig) loginHandler(writter http.ResponseWriter, request *http.Re
 		Email:        dbUser.Email,
 		Token:        token,
 		RefreshToken: refresh_token.Token,
+		IsChirpyRed:  dbUser.IsChirpyRed,
 	}
 
 	dat, err := json.Marshal(user)
@@ -210,10 +212,11 @@ func (cfg *apiConfig) changePasswordUserHandler(writter http.ResponseWriter, req
 	}
 
 	user := User{
-		ID:        dbUser.ID,
-		CreatedAt: dbUser.CreatedAt,
-		UpdatedAt: dbUser.UpdatedAt,
-		Email:     dbUser.Email,
+		ID:          dbUser.ID,
+		CreatedAt:   dbUser.CreatedAt,
+		UpdatedAt:   dbUser.UpdatedAt,
+		Email:       dbUser.Email,
+		IsChirpyRed: dbUser.IsChirpyRed,
 	}
 
 	dat, err := json.Marshal(user)
@@ -437,6 +440,38 @@ func (cfg *apiConfig) chirpDeleteHandler(writter http.ResponseWriter, request *h
 	}
 
 	cfg.db.DeleteChirp(request.Context(), chirp.ID)
+
+	writter.Header().Set("Content-Type", "application/json; charset=utf-8")
+	writter.WriteHeader(204)
+}
+
+func (cfg *apiConfig) webhooksHandler(writter http.ResponseWriter, request *http.Request) {
+	req, err := decode(request)
+	if err != nil {
+		log.Printf("Error decoding request fields: %s", err)
+		writter.WriteHeader(500)
+		return
+	}
+
+	if req.Event != "user.upgraded" {
+		writter.WriteHeader(204)
+		return
+	}
+
+	userID, err := uuid.Parse(req.Data.UserID)
+	if err != nil {
+		log.Printf("Error parsing User ID, not a valid uuid: %s", err)
+		writter.WriteHeader(404)
+		return
+	}
+
+	chirpyRedParams := database.UpdateToChirpyRedParams{ID: userID, IsChirpyRed: true}
+	err = cfg.db.UpdateToChirpyRed(request.Context(), chirpyRedParams)
+	if err != nil {
+		log.Printf("Error fetching User ID, not in database: %s", err)
+		writter.WriteHeader(404)
+		return
+	}
 
 	writter.Header().Set("Content-Type", "application/json; charset=utf-8")
 	writter.WriteHeader(204)
