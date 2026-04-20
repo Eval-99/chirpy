@@ -18,6 +18,7 @@ type apiConfig struct {
 	db             *database.Queries
 	platform       string
 	secret         string
+	polkaKey       string
 }
 
 func (cfg *apiConfig) middlewareMetricsInc(next http.Handler) http.Handler {
@@ -446,6 +447,19 @@ func (cfg *apiConfig) chirpDeleteHandler(writter http.ResponseWriter, request *h
 }
 
 func (cfg *apiConfig) webhooksHandler(writter http.ResponseWriter, request *http.Request) {
+	key, err := auth.GetAPIKey(request.Header)
+	if err != nil {
+		log.Printf("Error key is missing or malformed: %s", err)
+		writter.WriteHeader(401)
+		return
+	}
+
+	if key != cfg.polkaKey {
+		log.Printf("Error API key does not match: %s", err)
+		writter.WriteHeader(401)
+		return
+	}
+
 	req, err := decode(request)
 	if err != nil {
 		log.Printf("Error decoding request fields: %s", err)

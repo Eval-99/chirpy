@@ -83,16 +83,31 @@ func ValidateJWT(tokenString, tokenSecret string) (uuid.UUID, error) {
 func GetBearerToken(headers http.Header) (string, error) {
 	authHeader := headers.Get("Authorization")
 	if authHeader == "" {
-		return "", errors.New("authorization header missing")
+		return "", errors.New("Authorization header missing")
 	}
 	if !strings.HasPrefix(authHeader, "Bearer ") {
-		return "", errors.New("authorization header must use Bearer scheme")
+		return "", errors.New("Authorization header must use Bearer scheme")
 	}
 	token := strings.TrimSpace(strings.TrimPrefix(authHeader, "Bearer "))
 	if token == "" {
-		return "", errors.New("bearer token is empty")
+		return "", errors.New("Bearer token is empty")
 	}
 	return token, nil
+}
+
+func GetAPIKey(headers http.Header) (string, error) {
+	authHeader := headers.Get("Authorization")
+	if authHeader == "" {
+		return "", errors.New("Authorization header missing")
+	}
+	if !strings.HasPrefix(authHeader, "ApiKey ") {
+		return "", errors.New("Authorization header must use ApiKey scheme")
+	}
+	key := strings.TrimSpace(strings.TrimPrefix(authHeader, "ApiKey "))
+	if key == "" {
+		return "", errors.New("ApiKey key is empty")
+	}
+	return key, nil
 }
 
 func MakeRefreshToken() string {

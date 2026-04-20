@@ -17,15 +17,22 @@ func main() {
 	dbURL := os.Getenv("DB_URL")
 	platform := os.Getenv("PLATFORM")
 	secret := os.Getenv("SECRET")
+	polkaKey := os.Getenv("POLKA_KEY")
 
 	db, err := sql.Open("postgres", dbURL)
 	if err != nil {
 		fmt.Println(err)
 	}
 
-	apiCfg := apiConfig{fileserverHits: atomic.Int32{}, db: database.New(db), platform: platform, secret: secret}
-	mux := http.NewServeMux()
+	apiCfg := apiConfig{
+		fileserverHits: atomic.Int32{},
+		db:             database.New(db),
+		platform:       platform,
+		secret:         secret,
+		polkaKey:       polkaKey,
+	}
 
+	mux := http.NewServeMux()
 	mux.Handle("/app/", apiCfg.middlewareMetricsInc(http.StripPrefix("/app", http.FileServer(http.Dir(".")))))
 
 	mux.HandleFunc("GET /api/healthz", healthHandler)
