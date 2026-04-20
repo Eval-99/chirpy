@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"sort"
 	"sync/atomic"
 	"time"
 
@@ -381,6 +382,17 @@ func (cfg *apiConfig) getChirpsHandler(writter http.ResponseWriter, request *htt
 	for _, chirp := range dbChirps {
 		res := chirpConvert(chirp)
 		chirpSlice = append(chirpSlice, res)
+	}
+
+	sorting := request.URL.Query().Get("sort")
+	if sorting == "desc" {
+		sort.Slice(chirpSlice, func(i, j int) bool {
+			return chirpSlice[i].CreatedAt.After(chirpSlice[j].CreatedAt)
+		})
+	} else {
+		sort.Slice(chirpSlice, func(i, j int) bool {
+			return chirpSlice[i].CreatedAt.Before(chirpSlice[j].CreatedAt)
+		})
 	}
 
 	dat, err := json.Marshal(chirpSlice)
